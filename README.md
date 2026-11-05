@@ -1,4 +1,4 @@
-# ATM Transaction Logging & Management System (ATLS)
+# ATM Transaction Logging System (ATLS)
 
 A monolithic DBMS mini-project built with **Python 3.12 (Flask)** and **PostgreSQL 16 (`atls_db`)** simulating both an active customer-facing ATM terminal and a back-end administrative bank portal running concurrently on independent ports.
 
