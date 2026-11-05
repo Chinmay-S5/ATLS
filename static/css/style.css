@@ -1,0 +1,400 @@
+/*
+ * ATM & Bank Management System - Minimalist Engineering Theme
+ * Color Palette: Dark Slate / Zinc (#09090b / #18181b) with crisp border treatment (#27272a).
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-primary: #09090b;
+    --bg-surface: #18181b;
+    --bg-surface-elevated: #27272a;
+    --border-color: #27272a;
+    --border-focus: #3f3f46;
+    --text-primary: #fafafa;
+    --text-muted: #a1a1aa;
+    --accent-blue: #2563eb;
+    --accent-blue-hover: #1d4ed8;
+    --accent-emerald: #10b981;
+    --accent-emerald-hover: #059669;
+    --accent-rose: #f43f5e;
+    --accent-amber: #f59e0b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+}
+
+/* Panel and Card Utility */
+.panel {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+}
+
+.panel-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Input Fields */
+.terminal-input {
+    background-color: #0c0c0e;
+    border: 1px solid var(--border-color);
+    color: #fafafa;
+    font-family: inherit;
+    transition: border-color 0.15s ease-in-out;
+}
+.terminal-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+/* Fast Cash Chips */
+.chip-btn {
+    background-color: #18181b;
+    border: 1px solid var(--border-color);
+    color: #e4e4e7;
+    transition: all 0.15s ease;
+}
+.chip-btn:hover {
+    background-color: #27272a;
+    border-color: #3f3f46;
+    color: #ffffff;
+}
+
+/* Status Badges */
+.badge-active {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.badge-blocked, .badge-critical, .badge-closed {
+    background-color: rgba(244, 63, 94, 0.1);
+    color: #f43f5e;
+    border: 1px solid rgba(244, 63, 94, 0.2);
+}
+.badge-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* Pseudo Terminal Screen */
+.cli-window {
+    background-color: #050507;
+    border: 1px solid #27272a;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.cli-prompt {
+    color: #10b981;
+}
+
+.cli-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background-color: #fafafa;
+    animation: blink 1s infinite;
+    vertical-align: middle;
+}
+
+@keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+/* Print Receipt Styling */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #receipt-modal-content, #receipt-modal-content * {
+        visibility: visible;
+    }
+    #receipt-modal-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px dashed #666666 !important;
+        box-shadow: none !important;
+    }
+}
+
+/* SQL Console Tabular Report Table */
+#report-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+#report-table th.sticky-col-1,
+#report-table td.sticky-col-1 {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+}
+
+#report-table th.sticky-col-1 {
+    z-index: 20;
+}
+
+#report-table th.sticky-col-2,
+#report-table td.sticky-col-2 {
+    position: sticky;
+    z-index: 10;
+}
+
+#report-table th.sticky-col-2 {
+    z-index: 20;
+}
+
+#report-table th {
+    background-color: #18181b;
+    color: #a1a1aa;
+    border-bottom: 1px solid #27272a;
+}
+
+#report-table td {
+    border-bottom: 1px solid #27272a;
+    color: #fafafa;
+}
+
+#report-table tbody tr:hover td {
+    background-color: #1e1e24 !important;
+}
+
+/* ============================================================================
+   BANK APPLICATION LIGHT MODE MINIMALIST THEME (PORT 5002)
+   Uses refined, neutral light tones (slate/zinc) without loud colors or pure harsh starkness.
+   ============================================================================ */
+
+body.bank-light-theme {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.bank-light-theme .panel {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.bank-light-theme .terminal-input {
+    background-color: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+.bank-light-theme .terminal-input:focus {
+    background-color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 1px #4f46e5;
+}
+
+.bank-light-theme .badge-active {
+    background-color: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+.bank-light-theme .badge-blocked, 
+.bank-light-theme .badge-critical, 
+.bank-light-theme .badge-closed {
+    background-color: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fecdd3;
+}
+.bank-light-theme .badge-warning {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+/* Retain dark CLI console in SQL console regardless of theme */
+.cli-window {
+    background-color: #050507 !important;
+    border: 1px solid #27272a !important;
+    color: #fafafa !important;
+}
+.cli-window textarea#terminal-input {
+    background-color: #0d0d10 !important;
+    border-color: #27272a !important;
+    color: #fafafa !important;
+}
+
+/* Light mode for SQL console external tabular report */
+/* Light mode for SQL console external tabular report */
+.bank-light-theme #report-table th {
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    font-weight: 600;
+}
+.bank-light-theme #report-table td {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Ensure sticky columns match regular columns in background, text color, and borders */
+.bank-light-theme #report-table th.sticky-col-1,
+.bank-light-theme #report-table th.sticky-col-2 {
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.bank-light-theme #report-table td.sticky-col-1,
+.bank-light-theme #report-table td.sticky-col-2 {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border-right: none !important;
+}
+
+/* Seamless hover highlight across all columns including sticky ones */
+.bank-light-theme #report-table tbody tr:hover td,
+.bank-light-theme #report-table tbody tr:hover td.sticky-col-1,
+.bank-light-theme #report-table tbody tr:hover td.sticky-col-2 {
+    background-color: #f8fafc !important;
+}
+
+/* Light mode for Customer Combobox Dropdown */
+.bank-light-theme #customer-dropdown-menu {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+.bank-light-theme #customer-dropdown-menu > div {
+    border-color: #f1f5f9 !important;
+}
+.bank-light-theme #customer-dropdown-menu .hover\:bg-zinc-800:hover {
+    background-color: #f8fafc !important;
+}
+.bank-light-theme #customer-dropdown-menu span.text-white {
+    color: #0f172a !important;
+}
+.bank-light-theme #customer-dropdown-menu .text-zinc-400 {
+    color: #64748b !important;
+}
+
+/* Light mode for dynamically generated cards & tables in Profile modal */
+.bank-light-theme #profile-cards-list > div {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.bank-light-theme #profile-cards-list div.text-zinc-100 {
+    color: #0f172a !important;
+}
+.bank-light-theme #profile-cards-list div.text-zinc-300 {
+    color: #1e293b !important;
+}
+.bank-light-theme #profile-cards-list div.border-\[\#27272a\] {
+    border-color: #e2e8f0 !important;
+}
+.bank-light-theme #profile-cards-list span.text-zinc-500 {
+    color: #64748b !important;
+}
+.bank-light-theme #profile-cards-list strong.text-zinc-300 {
+    color: #0f172a !important;
+}
+.bank-light-theme #profile-cards-list strong.text-zinc-400 {
+    color: #64748b !important;
+}
+.bank-light-theme #profile-cards-list .bg-\[\#0d0d10\] {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+.bank-light-theme #profile-tx-tbody tr {
+    border-color: #e2e8f0 !important;
+}
+.bank-light-theme #profile-tx-tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+.bank-light-theme #profile-tx-tbody td {
+    color: #1e293b !important;
+}
+.bank-light-theme #profile-tx-tbody td.text-zinc-200 {
+    color: #0f172a !important;
+}
+.bank-light-theme #profile-tx-tbody td.text-zinc-400 {
+    color: #64748b !important;
+}
+.bank-light-theme #profile-tx-tbody td.text-zinc-500 {
+    color: #64748b !important;
+}
+
+/* ============================================================================
+   ATM CUSTOMER KIOSK LIGHT THEME (PORT 5001)
+   Modern, minimalist fintech kiosk aesthetic.
+   ============================================================================ */
+
+body.atm-kiosk-theme {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+body.atm-kiosk-theme .panel {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+body.atm-kiosk-theme .terminal-input {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+body.atm-kiosk-theme .terminal-input:focus {
+    background-color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 1px #4f46e5;
+}
+
+body.atm-kiosk-theme .chip-btn {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+body.atm-kiosk-theme .chip-btn:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+body.atm-kiosk-theme select {
+    max-width: 100%;
+    text-overflow: ellipsis;
+}
+
+
+

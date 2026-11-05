@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBMS Analytical Reports Engine - Port 5002</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bank-light-theme min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Project Brand Title Header -->
+        <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+            <div class="w-2.5 h-2.5 rounded-sm bg-indigo-600"></div>
+            <span class="text-base md:text-lg font-bold tracking-wider uppercase text-slate-900 font-sans">
+                ATM Transaction Logging System
+            </span>
+        </div>
+
+        <!-- Header -->
+        <header class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-indigo-600 animate-pulse"></div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-wider uppercase text-slate-900">DBMS Analytical Reports & Evaluation Engine</h1>
+                    <p class="text-xs text-slate-500">
+                        Section 6 Syllabus Criteria | Port 5002 | 
+                        User: <span class="text-slate-900 font-semibold">{{ session.get('bank_user', {}).get('name', 'Staff') }}</span>
+                        {% if session.get('bank_user', {}).get('role') == 'DBA' %}
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">DBA</span>
+                        {% else %}
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">CLERK</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="/" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition">
+                    Dashboard
+                </a>
+                <a href="/audit" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition">
+                    Transaction Logs
+                </a>
+                {% if session.get('bank_user', {}).get('role') == 'DBA' %}
+                <a href="/terminal" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-emerald-600 hover:border-emerald-500 hover:text-emerald-700 text-xs font-semibold transition flex items-center gap-1.5">
+                    <span>$</span> SQL Console
+                </a>
+                {% endif %}
+                <a href="/logout" class="px-3.5 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-semibold transition flex items-center gap-1">
+                    ⎋ Logout
+                </a>
+            </div>
+        </header>
+
+        <!-- PRESET QUERY SELECTION GRID -->
+        <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
+            <div class="border-b border-slate-200 pb-3">
+                <h2 class="text-xs uppercase tracking-wider font-bold text-slate-900">Syllabus Evaluation Query Presets</h2>
+                <p class="text-xs text-slate-500 mt-1">Select an analytical query blueprint to execute against PostgreSQL and inspect results.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- 1. Aggregates -->
+                <a href="/reports?query=aggregates" class="p-4 rounded-xl border {% if current_key == 'aggregates' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">A. Aggregates</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">COUNT, SUM, AVG, MIN, MAX</div>
+                    <div class="text-[11px] text-slate-500 mt-1">System-wide liabilities, avg withdrawal, and bounds.</div>
+                </a>
+
+                <!-- 2. Relational Inner Join -->
+                <a href="/reports?query=inner_join" class="p-4 rounded-xl border {% if current_key == 'inner_join' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">B. Inner Joins</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">Transaction Stream Correlation</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Join Transaction → Account → Customer → Branch.</div>
+                </a>
+
+                <!-- 3. Relational Outer Join -->
+                <a href="/reports?query=outer_join" class="p-4 rounded-xl border {% if current_key == 'outer_join' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">B. Outer Joins (Left / Right)</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">Zero-Activity Analysis</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Find branches without accounts or unutilized accounts.</div>
+                </a>
+
+                <!-- 4. Grouping & Having -->
+                <a href="/reports?query=group_having" class="p-4 rounded-xl border {% if current_key == 'group_having' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">C. Group By & Having</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">Branch Volume Thresholds</div>
+                    <div class="text-[11px] text-slate-500 mt-1">GROUP BY branch HAVING SUM(balance) > ₹100,000.</div>
+                </a>
+
+                <!-- 5. Nested Subqueries -->
+                <a href="/reports?query=subqueries" class="p-4 rounded-xl border {% if current_key == 'subqueries' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">D. Subqueries</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">Accounts Below Global Average</div>
+                    <div class="text-[11px] text-slate-500 mt-1">WHERE balance < (SELECT AVG(balance) FROM account).</div>
+                </a>
+
+                <!-- 6. Set Math (UNION / INTERSECT) -->
+                <a href="/reports?query=set_operations" class="p-4 rounded-xl border {% if current_key == 'set_operations' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">E. Set Operations</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">UNION / INTERSECT Rosters</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Debit card holders UNION Credit card holders.</div>
+                </a>
+
+                <!-- 7. View 1: Failed Security Audits -->
+                <a href="/reports?query=view_failed_audits" class="p-4 rounded-xl border {% if current_key == 'view_failed_audits' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">F. Database View 1</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">v_failed_security_audits</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Cards with failed attempts or BLOCKED status.</div>
+                </a>
+
+                <!-- 8. View 2: High Value Transfers -->
+                <a href="/reports?query=view_high_value" class="p-4 rounded-xl border {% if current_key == 'view_high_value' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">F. Database View 2</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">v_high_value_transfers</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Transactions with amounts >= ₹10,000.</div>
+                </a>
+
+                <!-- 9. View 3: Account Overview -->
+                <a href="/reports?query=view_overview" class="p-4 rounded-xl border {% if current_key == 'view_overview' %}border-indigo-500 bg-indigo-50/80 shadow-sm{% else %}border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300{% endif %} transition text-left">
+                    <div class="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">F. Database View 3</div>
+                    <div class="font-bold text-slate-900 text-xs mt-1">v_account_overview</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Full 3NF join of Customer, Account, and Branch.</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- CURRENT REPORT QUERY & RESULTS -->
+        {% if report %}
+        <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-900">{{ report.title }}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">{{ report.description }}</p>
+                </div>
+                <div class="text-xs font-mono text-slate-500 flex items-center gap-3">
+                    <span>Rows: <strong class="text-slate-900">{{ report.rows|length }}</strong></span>
+                    <span>Execution: <strong class="text-emerald-600">{{ report.execution_time }}ms</strong></span>
+                </div>
+            </div>
+
+            <!-- Raw SQL Display Box -->
+            <div class="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs overflow-x-auto">
+                <div class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-1">Executed SQL Query:</div>
+                <pre class="text-indigo-700 font-mono text-xs leading-relaxed">{{ report.sql }}</pre>
+            </div>
+
+            <!-- Tabular Result Grid -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-600 uppercase text-[10px] bg-slate-50 font-medium">
+                            {% for col in report.columns %}
+                            <th class="py-2.5 px-3 font-semibold">{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for row in report.rows %}
+                        <tr class="hover:bg-slate-50 transition">
+                            {% for col in report.columns %}
+                            <td class="py-2.5 px-3 font-mono text-slate-800">
+                                {% if row[col] is none %}
+                                <span class="text-slate-400 italic">NULL</span>
+                                {% else %}
+                                {{ row[col] }}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ report.columns|length }}" class="py-6 text-center text-slate-500">
+                                Query returned 0 matching records.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Management & Audit Portal (Port 5002)</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bank-light-theme min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Project Brand Title Header -->
+        <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+            <div class="w-2.5 h-2.5 rounded-sm bg-indigo-600"></div>
+            <span class="text-base md:text-lg font-bold tracking-wider uppercase text-slate-900 font-sans">
+                ATM Transaction Logging System
+            </span>
+        </div>
+
+        <!-- Global Portal Header -->
+        <header class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-indigo-600 animate-pulse"></div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-wider uppercase text-slate-900">Bank Management & Audit Dashboard</h1>
+                    <p class="text-xs text-slate-500">
+                        User: <span class="text-slate-900 font-semibold">{{ session.get('bank_user', {}).get('name', 'Staff') }}</span>
+                        {% if session.get('bank_user', {}).get('role') == 'DBA' %}
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">DBA</span>
+                        {% else %}
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">CLERK</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="flex items-center gap-2">
+                <a href="/" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition shadow-sm">
+                    Dashboard
+                </a>
+                <a href="/audit" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition">
+                    Transaction Logs
+                </a>
+                {% if session.get('bank_user', {}).get('role') == 'DBA' %}
+                <a href="/terminal" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-emerald-600 hover:border-emerald-500 hover:text-emerald-700 text-xs font-semibold transition flex items-center gap-1.5">
+                    <span>$</span> SQL Console
+                </a>
+                {% endif %}
+                <a href="/logout" class="px-3.5 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-semibold transition flex items-center gap-1">
+                    ⎋ Logout
+                </a>
+            </div>
+        </header>
+
+        {% if message %}
+        <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs flex items-center justify-between">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="text-emerald-700 hover:text-emerald-900">&times;</button>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs flex items-center justify-between">
+            <span>{{ error }}</span>
+            <button onclick="this.parentElement.remove()" class="text-rose-700 hover:text-rose-900">&times;</button>
+        </div>
+        {% endif %}
+
+        <!-- KPI SUMMARY METRICS -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+                <div class="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Total Customers</div>
+                <div class="text-2xl font-bold text-slate-900 font-mono mt-1">{{ kpi.total_customers }}</div>
+                <div class="text-[10px] text-slate-400 mt-1">Verified identities</div>
+            </div>
+
+            <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+                <div class="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Active Accounts</div>
+                <div class="text-2xl font-bold text-emerald-600 font-mono mt-1">{{ kpi.active_accounts }}</div>
+                <div class="text-[10px] text-slate-400 mt-1">Across 10 branches</div>
+            </div>
+
+            <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+                <div class="text-[11px] text-slate-500 uppercase tracking-wider font-medium">System Deposits</div>
+                <div class="text-2xl font-bold text-slate-900 font-mono mt-1">₹{{ '{:,.0f}'.format(kpi.total_deposits) }}</div>
+                <div class="text-[10px] text-slate-400 mt-1">Aggregate liabilities</div>
+            </div>
+
+            <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
+                <div class="text-[11px] text-slate-500 uppercase tracking-wider font-medium">ATM Cash In Fleet</div>
+                <div class="text-2xl font-bold text-indigo-600 font-mono mt-1">₹{{ '{:,.0f}'.format(kpi.total_atm_cash) }}</div>
+                <div class="text-[10px] text-slate-400 mt-1">{{ kpi.operational_atms }} Operational ATMs</div>
+            </div>
+
+            <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4 col-span-2 md:col-span-1">
+                <div class="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Security Alerts</div>
+                <div class="text-2xl font-bold font-mono {% if kpi.blocked_cards > 0 %}text-rose-600{% else %}text-slate-900{% endif %} mt-1">
+                    {{ kpi.blocked_cards }}
+                </div>
+                <div class="text-[10px] text-slate-400 mt-1">Locked cards / anomalies</div>
+            </div>
+        </div>
+
+        <!-- ACCOUNT MANAGEMENT HUB -->
+        <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-sm uppercase tracking-wider font-bold text-slate-900">Account Management Hub</h2>
+                    <p class="text-xs text-slate-500">Customer banking portfolios, ledger balances, and operational statuses</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleModal('new-account-modal', true)" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                        <span>+</span> Open New Account
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <form method="GET" action="/" class="flex flex-wrap items-center gap-3 text-xs">
+                <input 
+                    type="text" 
+                    name="search" 
+                    value="{{ search }}" 
+                    placeholder="Search by customer name, account number..." 
+                    class="terminal-input px-3.5 py-2 rounded-lg text-xs flex-1 min-w-[240px] bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600"
+                >
+
+                <select name="status" class="terminal-input px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600">
+                    <option value="">All Statuses</option>
+                    <option value="ACTIVE" {% if status == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+                    <option value="INACTIVE" {% if status == 'INACTIVE' %}selected{% endif %}>INACTIVE</option>
+                    <option value="FROZEN" {% if status == 'FROZEN' %}selected{% endif %}>FROZEN</option>
+                    <option value="DORMANT" {% if status == 'DORMANT' %}selected{% endif %}>DORMANT</option>
+                    <option value="CLOSED" {% if status == 'CLOSED' %}selected{% endif %}>CLOSED</option>
+                </select>
+
+                <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg text-white font-semibold transition">
+                    Filter
+                </button>
+                {% if search or status %}
+                <a href="/" class="px-3 py-2 text-slate-500 hover:text-slate-900 underline">Clear</a>
+                {% endif %}
+            </form>
+
+            <!-- Accounts Table -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-600 uppercase text-[10px] bg-slate-50 font-medium">
+                            <th class="py-2.5 px-3">Account Number</th>
+                            <th class="py-2.5 px-3">Customer Name</th>
+                            <th class="py-2.5 px-3">Type</th>
+                            <th class="py-2.5 px-3">Branch</th>
+                            <th class="py-2.5 px-3">Balance (₹)</th>
+                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for acc in accounts %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-2.5 px-3">
+                                <button 
+                                    type="button" 
+                                    onclick="openAccountProfile('{{ acc.account_id }}')" 
+                                    class="font-mono font-medium text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1 group text-left cursor-pointer"
+                                    title="View full account profile & linked cards"
+                                >
+                                    <span>{{ acc.account_number }}</span>
+                                    <span class="text-[9px] text-slate-400 group-hover:text-indigo-600 transition-colors">&rarr;</span>
+                                </button>
+                            </td>
+                            <td class="py-2.5 px-3 font-semibold text-slate-900">
+                                {{ acc.customer_name }}
+                                <div class="text-[10px] font-normal text-slate-500">{{ acc.phone_number }}</div>
+                            </td>
+                            <td class="py-2.5 px-3 text-slate-600">{{ acc.account_type }}</td>
+                            <td class="py-2.5 px-3 text-slate-600">{{ acc.branch_name }}</td>
+                            <td class="py-2.5 px-3 font-mono font-bold {% if acc.balance > 100000 %}text-emerald-600{% else %}text-slate-900{% endif %}">
+                                ₹{{ '{:,.2f}'.format(acc.balance) }}
+                            </td>
+                            <td class="py-2.5 px-3">
+                                {% if acc.status == 'ACTIVE' %}
+                                <span class="badge-active px-2 py-0.5 rounded text-[10px] font-semibold">ACTIVE</span>
+                                {% elif acc.status == 'FROZEN' %}
+                                <span class="badge-warning px-2 py-0.5 rounded text-[10px] font-semibold">FROZEN</span>
+                                {% elif acc.status == 'CLOSED' %}
+                                <span class="badge-closed px-2 py-0.5 rounded text-[10px] font-semibold">CLOSED</span>
+                                {% else %}
+                                <span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded text-[10px]">{{ acc.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-2.5 px-3 text-right space-x-1.5">
+                                {% if acc.status == 'ACTIVE' %}
+                                <form action="/account/status" method="POST" class="inline">
+                                    <input type="hidden" name="account_id" value="{{ acc.account_id }}">
+                                    <input type="hidden" name="new_status" value="FROZEN">
+                                    <button type="submit" class="text-amber-600 hover:text-amber-700 text-[11px] underline">Freeze</button>
+                                </form>
+                                <form action="/account/status" method="POST" class="inline">
+                                    <input type="hidden" name="account_id" value="{{ acc.account_id }}">
+                                    <input type="hidden" name="new_status" value="CLOSED">
+                                    <button type="submit" onclick="return confirm('Soft-delete: Close account?')" class="text-rose-600 hover:text-rose-700 text-[11px] underline">Close</button>
+                                </form>
+                                {% elif acc.status in ['FROZEN', 'INACTIVE', 'DORMANT'] %}
+                                <form action="/account/status" method="POST" class="inline">
+                                    <input type="hidden" name="account_id" value="{{ acc.account_id }}">
+                                    <input type="hidden" name="new_status" value="ACTIVE">
+                                    <button type="submit" class="text-emerald-600 hover:text-emerald-700 text-[11px] underline">Reactivate</button>
+                                </form>
+                                {% else %}
+                                <span class="text-slate-400 text-[11px]">Archived</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="py-4 text-center text-slate-500">No accounts match the specified criteria.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- NEW ACCOUNT CREATION MODAL -->
+        <div id="new-account-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full text-xs text-slate-800 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                    <h3 class="font-bold uppercase tracking-wider text-slate-900">Create New Customer Account</h3>
+                    <button onclick="toggleModal('new-account-modal', false)" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+                </div>
+
+                <form action="/account/create" method="POST" class="space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium">Customer</label>
+                            <button type="button" onclick="openNewCustomerModal()" class="text-xs text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1 font-semibold">
+                                <span>+</span> New Customer
+                            </button>
+                        </div>
+                        
+                        <!-- Search bar + drop down menu -->
+                        <div class="relative" id="customer-combobox-wrapper">
+                            <input type="hidden" name="customer_id" id="account-customer-id">
+                            <div class="relative flex items-center">
+                                <input 
+                                    type="text" 
+                                    id="customer-search-input" 
+                                    placeholder="Search by name, ID, phone, or email..." 
+                                    autocomplete="off"
+                                    class="terminal-input w-full px-3.5 py-2.5 pr-8 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none placeholder:text-slate-400"
+                                >
+                                <button type="button" id="customer-dropdown-toggle" class="absolute right-0 top-0 bottom-0 px-2.5 flex items-center text-slate-400 hover:text-slate-700" tabindex="-1">
+                                    <svg class="w-3.5 h-3.5 transition-transform duration-200" id="customer-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                            </div>
+                            
+                            <div id="customer-dropdown-menu" class="hidden absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-50 divide-y divide-slate-100">
+                                <!-- Dropdown options dynamically populated via JS -->
+                            </div>
+                            <p id="customer-selection-label" class="text-[10px] text-slate-400 mt-1">Select an existing customer or click '+ New Customer'.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Assign Home Branch</label>
+                        <select name="branch_id" required class="terminal-input w-full px-3.5 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                            {% for b in branches %}
+                            <option value="{{ b.branch_id }}">{{ b.branch_name }} ({{ b.ifsc_code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Account Type</label>
+                        <select name="account_type" required class="terminal-input w-full px-3.5 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                            <option value="SAVINGS">SAVINGS</option>
+                            <option value="SALARY">SALARY</option>
+                            <option value="CURRENT">CURRENT</option>
+                            <option value="FIXED_DEPOSIT">FIXED_DEPOSIT</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Initial Deposit Amount (₹)</label>
+                        <input type="number" name="initial_balance" min="0" step="100" value="1000" required class="terminal-input w-full px-3.5 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none font-mono">
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="toggleModal('new-account-modal', false)" class="flex-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 py-2.5 rounded-lg text-slate-700 font-semibold transition">
+                            Cancel
+                        </button>
+                        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 py-2.5 rounded-lg text-white font-semibold transition shadow-sm">
+                            Create Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- NEW CUSTOMER REGISTRATION MODAL -->
+        <div id="new-customer-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[60]">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full text-xs text-slate-800 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                    <div>
+                        <h3 class="font-bold uppercase tracking-wider text-slate-900">Register New Customer</h3>
+                        <p class="text-[10px] text-slate-500">Create profile and auto-select for account opening</p>
+                    </div>
+                    <button type="button" onclick="closeNewCustomerModal()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+                </div>
+
+                <form id="new-customer-form" onsubmit="handleNewCustomerSubmit(event)" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">First Name *</label>
+                            <input type="text" name="firstname" id="cust-firstname" required placeholder="John" class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Last Name</label>
+                            <input type="text" name="lastname" id="cust-lastname" placeholder="Doe" class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Date of Birth *</label>
+                            <input type="date" name="dob" id="cust-dob" required class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Gender</label>
+                            <select name="gender" id="cust-gender" class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Phone Number *</label>
+                        <input type="tel" name="phone_number" id="cust-phone" required placeholder="9876543210" class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none font-mono">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Email Address *</label>
+                        <input type="email" name="email" id="cust-email" required placeholder="john.doe@example.com" class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-1">Address (Optional)</label>
+                        <input type="text" name="address" id="cust-address" placeholder="123 Bank Street, City" class="terminal-input w-full px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                    </div>
+
+                    <div id="new-customer-error" class="hidden text-rose-600 text-[11px] bg-rose-50 border border-rose-200 rounded-lg p-2.5"></div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="closeNewCustomerModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 py-2.5 rounded-lg text-slate-700 font-semibold transition">
+                            Cancel
+                        </button>
+                        <button type="submit" id="new-customer-submit-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 py-2.5 rounded-lg text-white font-semibold transition shadow-sm">
+                            Register Customer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- COMPREHENSIVE ACCOUNT PROFILE MODAL -->
+        <div id="account-profile-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-3 md:p-6 z-50">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 max-w-4xl w-full max-h-[92vh] flex flex-col text-xs text-slate-800 shadow-2xl">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 rounded-full bg-indigo-600 animate-pulse"></div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-sm uppercase tracking-wider text-slate-900">Account Profile:</h3>
+                                <span id="profile-acc-num" class="font-bold text-sm text-indigo-600 font-mono">Loading...</span>
+                                <span id="profile-acc-status-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Customer Portfolio & Ledger Management Hub</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeAccountProfile()" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1 leading-none">&times;</button>
+                </div>
+
+                <!-- Modal Scrollable Content -->
+                <div id="profile-modal-body" class="overflow-y-auto space-y-5 pr-1 flex-1">
+                    <!-- Section 1: Top Overview Grid (Account & Customer & Branch) -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <!-- Card 1: Account Ledger Info -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                                <span>Account Details</span>
+                                <span id="profile-acc-type-badge" class="text-indigo-600 font-bold"></span>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-500">Current Balance</div>
+                                <div class="text-base font-bold text-emerald-600 font-mono" id="profile-balance">₹0.00</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <div>
+                                    <div class="text-[10px] text-slate-500">Account Type</div>
+                                    <div id="profile-acc-type" class="text-slate-800 font-medium">SAVINGS</div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-slate-500">Date Opened</div>
+                                    <div id="profile-created-at" class="text-slate-700 font-mono text-[10px]">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Customer Identity Profile -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                                <span>Customer Profile</span>
+                                <span id="profile-cust-id" class="text-slate-400 font-mono">#--</span>
+                            </div>
+                            <div>
+                                <div id="profile-cust-name" class="font-bold text-slate-900 text-sm">--</div>
+                                <div class="text-[11px] text-slate-500" id="profile-cust-meta">Age: -- • DOB: --</div>
+                            </div>
+                            <div class="space-y-1 text-[11px] text-slate-700">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-slate-500 text-[10px]">Phone:</span>
+                                    <span id="profile-cust-phone" class="font-mono text-slate-800">--</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-slate-500 text-[10px]">Email:</span>
+                                    <span id="profile-cust-email" class="truncate text-slate-800">--</span>
+                                </div>
+                                <div class="flex items-start gap-1.5">
+                                    <span class="text-slate-500 text-[10px]">Address:</span>
+                                    <span id="profile-cust-address" class="text-slate-700 text-[10px] leading-tight">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Home Branch Details -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                                <span>Home Branch</span>
+                                <span id="profile-branch-ifsc" class="text-indigo-600 font-mono">--</span>
+                            </div>
+                            <div>
+                                <div id="profile-branch-name" class="font-bold text-slate-900 text-sm">--</div>
+                                <div class="text-[10px] text-slate-500">IFSC: <span id="profile-branch-ifsc-sub" class="text-slate-700 font-mono">--</span></div>
+                            </div>
+                            <div class="text-[11px] text-slate-700 space-y-1">
+                                <div>
+                                    <div class="text-[10px] text-slate-500">Branch Address</div>
+                                    <div id="profile-branch-address" class="text-[10px] leading-tight text-slate-700">--</div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-slate-500 text-[10px]">Postal Code:</span>
+                                    <span id="profile-branch-pin" class="font-mono text-slate-800">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Linked Payment Cards -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                            <div>
+                                <h4 class="font-bold uppercase tracking-wider text-slate-900 text-xs">Linked Payment Cards</h4>
+                                <p class="text-[10px] text-slate-500">ATM/POS cards authenticated for withdrawals and ledger transactions</p>
+                            </div>
+                            <button 
+                                type="button" 
+                                onclick="toggleIssueCardPanel()" 
+                                class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                            >
+                                <span>+</span> Issue New Card
+                            </button>
+                        </div>
+
+                        <!-- Inline Card Issuing Form -->
+                        <div id="issue-card-panel" class="hidden bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
+                            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                                <span class="font-bold text-slate-900 uppercase text-[11px]">Issue & Link New Card</span>
+                                <button type="button" onclick="toggleIssueCardPanel(false)" class="text-slate-400 hover:text-slate-700">&times;</button>
+                            </div>
+                            <form id="issue-card-form" onsubmit="handleIssueCardSubmit(event)" class="space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] uppercase text-slate-600 font-medium mb-1">Card Type</label>
+                                        <select name="card_type" id="new-card-type" class="terminal-input w-full px-2.5 py-1.5 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                                            <option value="DEBIT">DEBIT (Visa 4532)</option>
+                                            <option value="CREDIT">CREDIT (Mastercard 5241)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] uppercase text-slate-600 font-medium mb-1">Initial 4-Digit PIN</label>
+                                        <input type="password" maxlength="4" pattern="[0-9]{4}" name="pin" id="new-card-pin" value="1234" required placeholder="1234" class="terminal-input w-full px-2.5 py-1.5 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none font-mono">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] uppercase text-slate-600 font-medium mb-1">Validity Period</label>
+                                        <select name="validity_years" id="new-card-validity" class="terminal-input w-full px-2.5 py-1.5 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 focus:border-indigo-600 focus:outline-none">
+                                            <option value="3">3 Years</option>
+                                            <option value="5" selected>5 Years (Standard)</option>
+                                            <option value="7">7 Years</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 justify-end pt-1">
+                                    <button type="button" onclick="toggleIssueCardPanel(false)" class="px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" id="issue-card-btn" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm">
+                                        Issue Card
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Cards Grid Container -->
+                        <div id="profile-cards-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Transaction History -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div class="border-b border-slate-200 pb-2">
+                            <h4 class="font-bold uppercase tracking-wider text-slate-900 text-xs">Account Transaction Record</h4>
+                            <p class="text-[10px] text-slate-500">Chronological ledger activity for this account (Withdrawals, Deposits, Balance Checks)</p>
+                        </div>
+
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-slate-600 uppercase text-[10px] bg-slate-50 font-medium">
+                                        <th class="py-2.5 px-3">TX ID</th>
+                                        <th class="py-2.5 px-3">Date & Time</th>
+                                        <th class="py-2.5 px-3">Type</th>
+                                        <th class="py-2.5 px-3">Amount (₹)</th>
+                                        <th class="py-2.5 px-3">Method</th>
+                                        <th class="py-2.5 px-3">Terminal Location</th>
+                                        <th class="py-2.5 px-3">Card</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profile-tx-tbody" class="divide-y divide-slate-100">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="border-t border-slate-200 pt-3 mt-4 flex justify-end">
+                    <button type="button" onclick="closeAccountProfile()" class="px-5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold transition">
+                        Close Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Injected customer reference list -->
+    <script id="initial-customers-data" type="application/json">
+        {{ customers | tojson }}
+    </script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

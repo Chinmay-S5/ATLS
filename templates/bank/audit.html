@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATM Transaction Logs</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bank-light-theme min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Project Brand Title Header -->
+        <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+            <div class="w-2.5 h-2.5 rounded-sm bg-indigo-600"></div>
+            <span class="text-base md:text-lg font-bold tracking-wider uppercase text-slate-900 font-sans">
+                ATM Transaction Logging System
+            </span>
+        </div>
+
+        <!-- Global Portal Header -->
+        <header class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-indigo-600 animate-pulse"></div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-wider uppercase text-slate-900">ATM Transaction Logs</h1>
+                    <p class="text-xs text-slate-500">
+                        User: <span class="text-slate-900 font-semibold">{{ session.get('bank_user', {}).get('name', 'Staff') }}</span>
+                        {% if session.get('bank_user', {}).get('role') == 'DBA' %}
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">DBA</span>
+                        {% else %}
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">CLERK</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="flex items-center gap-2">
+                <a href="/" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition">
+                    Dashboard
+                </a>
+                <a href="/audit" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition shadow-sm">
+                    Transaction Logs
+                </a>
+                {% if session.get('bank_user', {}).get('role') == 'DBA' %}
+                <a href="/terminal" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-emerald-600 hover:border-emerald-500 hover:text-emerald-700 text-xs font-semibold transition flex items-center gap-1.5">
+                    <span>$</span> SQL Console
+                </a>
+                {% endif %}
+                <a href="/logout" class="px-3.5 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-semibold transition flex items-center gap-1">
+                    ⎋ Logout
+                </a>
+            </div>
+        </header>
+
+        <!-- TRANSACTION LOGS SECTION -->
+        <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-sm uppercase tracking-wider font-bold text-slate-900">Transaction Logs</h2>
+                </div>
+                <span class="text-xs text-slate-500 font-mono">Showing {{ logs|length }} ATM transactions</span>
+            </div>
+
+            <!-- Filter Controls -->
+            <form id="audit-filter-form" method="GET" action="/audit" class="flex flex-wrap items-center gap-3 text-xs">
+                <!-- Search bar -->
+                <input 
+                    type="text" 
+                    name="search" 
+                    value="{{ search }}" 
+                    placeholder="Search by customer name, account number, terminal..." 
+                    class="terminal-input px-3.5 py-2 rounded-lg text-xs flex-1 min-w-[220px] bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600"
+                >
+
+                <!-- Operations dropdown menu (without TRANSFER, auto-applies on change) -->
+                <select 
+                    name="type" 
+                    onchange="this.form.submit()" 
+                    class="terminal-input px-3 py-2 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 cursor-pointer focus:outline-none focus:border-indigo-600"
+                >
+                    <option value="">All Operation Types</option>
+                    <option value="WITHDRAWAL" {% if tx_type == 'WITHDRAWAL' %}selected{% endif %}>WITHDRAWAL</option>
+                    <option value="DEPOSIT" {% if tx_type == 'DEPOSIT' %}selected{% endif %}>DEPOSIT</option>
+                    <option value="BALANCE_INQUIRY" {% if tx_type == 'BALANCE_INQUIRY' %}selected{% endif %}>BALANCE INQUIRY</option>
+                </select>
+
+                <!-- Filter by Date via Small Calendar (auto-applies on date selection) -->
+                <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                    <label for="date-filter" class="text-slate-600 text-xs font-medium whitespace-nowrap">📅 Date:</label>
+                    <input 
+                        type="date" 
+                        id="date-filter" 
+                        name="date" 
+                        value="{{ date_filter }}" 
+                        onchange="this.form.submit()" 
+                        class="terminal-input px-2.5 py-1 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 cursor-pointer font-sans"
+                    >
+                </div>
+
+                <!-- Sort By Dropdown (auto-applies on selection change) -->
+                <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                    <label for="sort-by" class="text-slate-600 text-xs font-medium whitespace-nowrap">Sort By:</label>
+                    <select 
+                        id="sort-by" 
+                        name="sort_by" 
+                        onchange="this.form.submit()" 
+                        class="terminal-input px-2.5 py-1 rounded-lg text-xs bg-white border border-slate-300 text-slate-900 cursor-pointer font-sans"
+                    >
+                        <option value="timestamp_desc" {% if sort_by == 'timestamp_desc' %}selected{% endif %}>Timestamp (Newest)</option>
+                        <option value="timestamp_asc" {% if sort_by == 'timestamp_asc' %}selected{% endif %}>Timestamp (Oldest)</option>
+                        <option value="tx_id_asc" {% if sort_by == 'tx_id_asc' %}selected{% endif %}>TX ID (Ascending)</option>
+                        <option value="tx_id_desc" {% if sort_by == 'tx_id_desc' %}selected{% endif %}>TX ID (Descending)</option>
+                        <option value="amount_desc" {% if sort_by == 'amount_desc' %}selected{% endif %}>Amount (High to Low)</option>
+                        <option value="amount_asc" {% if sort_by == 'amount_asc' %}selected{% endif %}>Amount (Low to High)</option>
+                        <option value="account_id_asc" {% if sort_by == 'account_id_asc' %}selected{% endif %}>Account ID (Ascending)</option>
+                        <option value="account_id_desc" {% if sort_by == 'account_id_desc' %}selected{% endif %}>Account ID (Descending)</option>
+                    </select>
+                </div>
+
+                {% if search or tx_type or date_filter or (sort_by and sort_by != 'timestamp_desc') %}
+                <a href="/audit" class="px-2.5 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg underline text-xs transition">Clear Filters</a>
+                {% endif %}
+            </form>
+
+            <!-- Table (Exact Dashboard Format) -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-600 uppercase text-[10px] bg-slate-50 font-medium">
+                            <th class="py-2.5 px-3">TX ID</th>
+                            <th class="py-2.5 px-3">Type</th>
+                            <th class="py-2.5 px-3">Amount (₹)</th>
+                            <th class="py-2.5 px-3">Method</th>
+                            <th class="py-2.5 px-3">Account (ID)</th>
+                            <th class="py-2.5 px-3">Customer</th>
+                            <th class="py-2.5 px-3">ATM Location</th>
+                            <th class="py-2.5 px-3">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for log in logs %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-2.5 px-3 font-mono text-slate-500">#{{ log.transaction_id }}</td>
+                            <td class="py-2.5 px-3 font-semibold">
+                                {% if log.transaction_type == 'DEPOSIT' %}
+                                <span class="text-emerald-600">DEPOSIT</span>
+                                {% elif log.transaction_type == 'WITHDRAWAL' %}
+                                <span class="text-rose-600">WITHDRAWAL</span>
+                                {% else %}
+                                <span class="text-slate-600">INQUIRY</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-2.5 px-3 font-mono font-bold {% if log.transaction_type == 'DEPOSIT' %}text-emerald-600{% elif log.transaction_type == 'WITHDRAWAL' %}text-rose-600{% else %}text-slate-900{% endif %}">
+                                ₹{{ '{:,.2f}'.format(log.amount) }}
+                            </td>
+                            <td class="py-2.5 px-3 text-slate-600 font-mono">{{ log.transaction_method }}</td>
+                            <td class="py-2.5 px-3 font-mono text-slate-800">
+                                {{ log.account_number }} <span class="text-slate-400 text-[10px]">(#{{ log.account_id }})</span>
+                            </td>
+                            <td class="py-2.5 px-3 text-slate-900 font-medium">{{ log.customer_name }}</td>
+                            <td class="py-2.5 px-3 text-slate-600 text-[11px]">{{ log.atm_location or 'N/A' }}</td>
+                            <td class="py-2.5 px-3 text-slate-500 font-mono text-[11px]">{{ log.date_time.strftime('%Y-%m-%d %H:%M:%S') if log.date_time else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="py-6 text-center text-slate-500">No ATM transaction records match the specified criteria.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATM Terminal - Customer Dashboard</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="atm-kiosk-theme min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Top Navigation / Session Header -->
+        <header id="screen-banner" class="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-3.5 h-3.5 rounded-full {% if atm.status == 'OPERATIONAL' %}bg-emerald-500 animate-pulse{% elif atm.status == 'MAINTENANCE' %}bg-amber-500{% else %}bg-rose-500{% endif %} shrink-0"></div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-sm font-bold tracking-wider uppercase text-slate-900">ATM Terminal {{ terminal_code }}</h1>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold border {% if atm.status == 'OPERATIONAL' %}border-emerald-200 bg-emerald-50 text-emerald-700{% elif atm.status == 'MAINTENANCE' %}border-amber-200 bg-amber-50 text-amber-700{% else %}border-rose-200 bg-rose-50 text-rose-700{% endif %}">
+                            {{ atm.status }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-600 mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span class="text-slate-400 font-medium">ATM Address:</span>
+                        <span class="text-slate-900 font-semibold">{{ atm.atm_location }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Live Session Clock & User Badge -->
+            <div class="flex items-center gap-3 shrink-0">
+                <span id="clock" class="text-xs font-mono text-slate-500 font-medium"></span>
+                <div class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 hidden md:block">
+                    Customer: <span class="font-semibold text-slate-900">{{ customer.firstname }} {{ customer.lastname or '' }}</span>
+                </div>
+            </div>
+
+            <div id="account-info" class="flex items-center gap-3 text-xs flex-wrap">
+                <div class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700">
+                    Card: <span class="text-indigo-600 font-mono font-semibold tracking-wider">{{ card.card_number[:4] }} •••• •••• {{ card.card_number[-4:] }}</span> ({{ card.card_type }})
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700">
+                    A/C: <span class="text-slate-900 font-mono font-semibold">{{ account.account_number }}</span> [{{ account.account_type }}]
+                </div>
+                <a href="/logout" onclick="handleLogout()" class="px-3.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold transition flex items-center gap-1.5">
+                    ⏏ Eject Card
+                </a>
+            </div>
+        </header>
+
+        <!-- Preserved balance-display invariant ID -->
+        <span id="balance-display" class="hidden">₹{{ '{:,.2f}'.format(account.balance) }}</span>
+
+        {% if error %}
+        <div class="p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs flex items-center justify-between">
+            <span>{{ error }}</span>
+            <button onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-700">&times;</button>
+        </div>
+        {% endif %}
+
+        {% if success %}
+        <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs flex items-center justify-between">
+            <span>{{ success }}</span>
+            <button onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-800">&times;</button>
+        </div>
+        {% endif %}
+
+        <!-- ATM INTERACTION WORKSPACE (3 OPTIONS OR MONEY ENTERING INTERFACE) -->
+        <div id="atm-workspace" class="space-y-4">
+            
+            <!-- 3 MAIN ATM OPTIONS: FULL WIDTH VERTICALLY STACKED ACTION BUTTONS -->
+            <div id="menu-screen">
+                <div 
+                    id="atm-menu-options" 
+                    class="w-full bg-white border border-slate-200 shadow-sm rounded-2xl p-6 sm:p-8"
+                >
+                    <div class="flex flex-col items-center gap-3.5 sm:gap-4 w-full">
+                        <!-- Option 1: Cash Withdrawal -->
+                        <button 
+                            type="button" 
+                            onclick="showAtmOption('withdraw')"
+                            class="aspect-[2/1] w-full max-w-[260px] sm:max-w-[280px] flex items-center justify-center text-center p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-600 hover:shadow-md transition-all duration-200 active:scale-[0.98] group cursor-pointer"
+                            style="aspect-ratio: 2 / 1;"
+                        >
+                            <span class="text-base sm:text-lg md:text-xl font-extrabold tracking-wider uppercase text-slate-900 group-hover:text-indigo-600 transition">WITHDRAW</span>
+                        </button>
+
+                        <!-- Option 2: Cash Deposit -->
+                        <button 
+                            type="button" 
+                            onclick="showAtmOption('deposit')"
+                            class="aspect-[2/1] w-full max-w-[260px] sm:max-w-[280px] flex items-center justify-center text-center p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-600 hover:shadow-md transition-all duration-200 active:scale-[0.98] group cursor-pointer"
+                            style="aspect-ratio: 2 / 1;"
+                        >
+                            <span class="text-base sm:text-lg md:text-xl font-extrabold tracking-wider uppercase text-slate-900 group-hover:text-emerald-600 transition">DEPOSIT</span>
+                        </button>
+
+                        <!-- Option 3: Balance Enquiry -->
+                        <button 
+                            type="button" 
+                            onclick="showAtmOption('balance')"
+                            class="aspect-[2/1] w-full max-w-[260px] sm:max-w-[280px] flex items-center justify-center text-center p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-600 hover:shadow-md transition-all duration-200 active:scale-[0.98] group cursor-pointer"
+                            style="aspect-ratio: 2 / 1;"
+                        >
+                            <span class="text-base sm:text-lg md:text-xl font-extrabold tracking-wider uppercase text-slate-900 group-hover:text-blue-600 transition">BALANCE ENQUIRY</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MONEY ENTERING INTERFACE: 1. WITHDRAWAL -->
+            <div id="withdraw-screen">
+                <div id="view-withdraw" class="hidden bg-white border border-slate-200 shadow-sm rounded-2xl p-6 sm:p-8 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="showAtmOption('menu')" class="px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 text-xs text-slate-700 font-medium transition">
+                            ← Back to Options
+                        </button>
+                        <h2 class="text-xs uppercase tracking-wider font-bold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Cash Withdrawal Interface
+                        </h2>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-mono">sp_atm_withdraw_cash</span>
+                </div>
+
+                <!-- Fast Cash Presets (Minimalist Matte Buttons) -->
+                <div>
+                    <label class="block text-[11px] uppercase tracking-wider text-slate-500 mb-2 font-semibold">Quick Select (Fast Cash)</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button type="button" onclick="setWithdrawAmount(500)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹500</button>
+                        <button type="button" onclick="setWithdrawAmount(1000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹1,000</button>
+                        <button type="button" onclick="setWithdrawAmount(2000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹2,000</button>
+                        <button type="button" onclick="setWithdrawAmount(5000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹5,000</button>
+                    </div>
+                </div>
+
+                <!-- Custom Money Entering Form -->
+                <form action="/withdraw" method="POST" class="space-y-4">
+                    <div>
+                        <label for="withdraw-amount" class="block text-xs uppercase tracking-wider text-slate-700 mb-1.5 font-medium">Enter Amount to Dispense (₹ Multiples of 100)</label>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
+                            <input 
+                                type="number" 
+                                id="withdraw-amount" 
+                                name="amount" 
+                                step="100" 
+                                min="100" 
+                                required 
+                                placeholder="e.g. 2000" 
+                                class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono text-base tracking-wider focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition shadow-sm"
+                            >
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1.5">ATM will dispense ₹500 and ₹100 banknotes.</p>
+                    </div>
+
+                    <!-- Action Buttons (Cancel / Clear / Confirm) -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <button 
+                            type="button" 
+                            onclick="showAtmOption('menu')" 
+                            class="bg-rose-100 hover:bg-rose-200 text-rose-700 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 px-5 transition uppercase tracking-wider"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="document.getElementById('withdraw-amount').value=''" 
+                            class="bg-amber-100 hover:bg-amber-200 text-amber-800 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 px-5 transition uppercase tracking-wider"
+                        >
+                            Clear
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 px-6 transition uppercase tracking-wider flex items-center justify-center gap-2"
+                        >
+                            <span>Confirm Cash Dispense</span>
+                            <span>→</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            </div>
+
+            <!-- MONEY ENTERING INTERFACE: 2. DEPOSIT -->
+            <div id="view-deposit" class="hidden bg-white border border-slate-200 shadow-sm rounded-2xl p-6 sm:p-8 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="showAtmOption('menu')" class="px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 text-xs text-slate-700 font-medium transition">
+                            ← Back to Options
+                        </button>
+                        <h2 class="text-xs uppercase tracking-wider font-bold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Instant Cash Deposit Interface
+                        </h2>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-mono">sp_atm_deposit_cash</span>
+                </div>
+
+                <!-- Quick Deposit Presets (Minimalist Matte Buttons) -->
+                <div>
+                    <label class="block text-[11px] uppercase tracking-wider text-slate-500 mb-2 font-semibold">Quick Select Deposit Amount</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button type="button" onclick="setDepositAmount(1000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹1,000</button>
+                        <button type="button" onclick="setDepositAmount(2000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹2,000</button>
+                        <button type="button" onclick="setDepositAmount(5000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹5,000</button>
+                        <button type="button" onclick="setDepositAmount(10000)" class="bg-white border border-slate-200 text-slate-800 hover:bg-slate-100 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 transition font-mono">+₹10,000</button>
+                    </div>
+                </div>
+
+                <!-- Custom Money Entering Form -->
+                <form action="/deposit" method="POST" class="space-y-4">
+                    <div>
+                        <label for="deposit-amount" class="block text-xs uppercase tracking-wider text-slate-700 mb-1.5 font-medium">Enter Amount to Insert (₹ Multiples of 100)</label>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
+                            <input 
+                                type="number" 
+                                id="deposit-amount" 
+                                name="amount" 
+                                step="100" 
+                                min="100" 
+                                required 
+                                placeholder="e.g. 5000" 
+                                class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono text-base tracking-wider focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition shadow-sm"
+                            >
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1.5">Insert notes into the deposit slot. Accepts notes of ₹100, ₹200, ₹500 denominations.</p>
+                    </div>
+
+                    <!-- Action Buttons (Cancel / Clear / Accept) -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <button 
+                            type="button" 
+                            onclick="showAtmOption('menu')" 
+                            class="bg-rose-100 hover:bg-rose-200 text-rose-700 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 px-5 transition uppercase tracking-wider"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="document.getElementById('deposit-amount').value=''" 
+                            class="bg-amber-100 hover:bg-amber-200 text-amber-800 active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 px-5 transition uppercase tracking-wider"
+                        >
+                            Clear
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 shadow-sm rounded-lg font-medium text-xs py-2.5 px-6 transition uppercase tracking-wider flex items-center justify-center gap-2"
+                        >
+                            <span>Accept Cash Deposit</span>
+                            <span>→</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- INTERFACE: 3. BALANCE ENQUIRY -->
+            <div id="view-balance" class="hidden bg-white border border-slate-200 shadow-sm rounded-2xl p-6 sm:p-8 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="showAtmOption('menu')" class="px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 text-xs text-slate-700 font-medium transition">
+                            ← Back to Options
+                        </button>
+                        <h2 class="text-xs uppercase tracking-wider font-bold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Balance Enquiry & Receipt
+                        </h2>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-mono">Real-Time Ledger</span>
+                </div>
+
+                <div class="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Account Balance Details</div>
+                    <div class="text-3xl font-bold text-slate-900 font-mono tracking-tight">
+                        ₹{{ '{:,.2f}'.format(account.balance) }}
+                    </div>
+                    <div class="text-xs text-slate-500 pt-1">
+                        Account: <span class="text-slate-900 font-mono font-semibold">{{ account.account_number }}</span> | Status: <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">{{ account.status }}</span>
+                    </div>
+                </div>
+
+                <form action="/balance-inquiry" method="POST" class="pt-2">
+                    <div class="flex items-center gap-3">
+                        <button 
+                            type="button" 
+                            onclick="showAtmOption('menu')" 
+                            class="px-5 py-2.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition"
+                        >
+                            Back
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95 shadow-sm rounded-lg font-medium py-2.5 px-6 text-xs uppercase tracking-wider transition flex items-center justify-center gap-2"
+                        >
+                            <span>Inquire & Print Digital Slip</span>
+                            <span>→</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+        <!-- Preserved statement-screen & tx-log-container invariant IDs -->
+        <div id="statement-screen" class="hidden">
+            <div id="tx-log-container"></div>
+        </div>
+
+        <!-- DIGITAL ATM RECEIPT MODAL (IF RECEIPT IN SESSION) -->
+        {% if receipt %}
+        <div id="receipt-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div id="receipt-modal-content" class="bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full font-mono text-xs text-slate-800 shadow-2xl">
+                <div class="text-center border-b border-dashed border-slate-300 pb-3 mb-3">
+                    <div class="font-bold text-sm tracking-wider uppercase text-slate-900">ATLS BANK OF INDIA</div>
+                    <div class="text-[11px] font-semibold text-slate-800">ATM TERMINAL {{ terminal_code }}</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">{{ atm.atm_location }}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">{{ receipt.timestamp }}</div>
+                </div>
+
+                <div class="space-y-1.5 border-b border-dashed border-slate-300 pb-3 mb-3 text-[11px]">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">TRANSACTION TYPE:</span>
+                        <span class="font-semibold text-slate-900">{{ receipt.type }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">ACCOUNT NUMBER:</span>
+                        <span class="text-slate-900">{{ receipt.account_number }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">CARD NUMBER:</span>
+                        <span class="text-slate-900">•••• •••• •••• {{ receipt.card_last4 }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">TRANSACTION AMOUNT:</span>
+                        <span class="font-bold text-emerald-600">₹{{ '{:,.2f}'.format(receipt.amount) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">CLOSING BALANCE:</span>
+                        <span class="font-bold text-slate-900">₹{{ '{:,.2f}'.format(receipt.new_balance) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">STATUS:</span>
+                        <span class="text-emerald-600 font-semibold">{{ receipt.status }}</span>
+                    </div>
+                </div>
+
+                <div class="text-center text-[10px] text-slate-400 mb-4">
+                    THANK YOU FOR BANKING WITH US.<br>PLEASE TAKE YOUR CASH AND RECEIPT.
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="flex-1 bg-slate-100 hover:bg-slate-200 py-2.5 rounded-lg text-slate-800 text-xs font-semibold transition">
+                        Print Slip
+                    </button>
+                    <button onclick="document.getElementById('receipt-modal').remove()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 py-2.5 rounded-lg text-white text-xs font-semibold transition">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        function submitWithdraw(amount) {
+            if (amount) setWithdrawAmount(amount);
+            const form = document.querySelector('#view-withdraw form');
+            if (form) form.submit();
+        }
+
+        function handleLogout() {
+            window.location.href = '/logout';
+        }
+
+        function fetchMiniStatement() {
+            window.location.reload();
+        }
+
+        function updateLiveClock() {
+            const clockEl = document.getElementById('clock');
+            if (clockEl) {
+                const now = new Date();
+                clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+    </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrative SQL Pseudo-Terminal - Port 5002</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bank-light-theme min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Project Brand Title Header -->
+        <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+            <div class="w-2.5 h-2.5 rounded-sm bg-indigo-600"></div>
+            <span class="text-base md:text-lg font-bold tracking-wider uppercase text-slate-900 font-sans">
+                ATM Transaction Logging System
+            </span>
+        </div>
+
+        <!-- Header -->
+        <header class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-wider uppercase text-slate-900">Administrative SQL Pseudo-Terminal</h1>
+                    <p class="text-xs text-slate-500">
+                        User: <span class="text-slate-900 font-semibold">{{ session.get('bank_user', {}).get('name', 'Database Administrator') }}</span>
+                        <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">DBA</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="/" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition">
+                    Dashboard
+                </a>
+                <a href="/audit" class="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-xs font-semibold transition">
+                    Transaction Logs
+                </a>
+                <a href="/terminal" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                    <span>$</span> SQL Console
+                </a>
+                <a href="/logout" class="px-3.5 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-semibold transition flex items-center gap-1">
+                    ⎋ Logout
+                </a>
+            </div>
+        </header>
+
+        <!-- Quick Viva Preset Query Dropdown -->
+        <div class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-4 text-xs space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <label for="preset-select" class="text-[11px] text-slate-700 uppercase tracking-wider font-semibold">
+                        Quick Query Presets:
+                    </label>
+                </div>
+                <span class="text-[11px] text-slate-500 font-mono">12 Pre-configured Queries</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2 mt-2">
+                <select 
+                    id="preset-select" 
+                    onchange="loadSelectedPreset()"
+                    class="flex-1 bg-white border border-zinc-300 text-xs text-blue-600 font-mono rounded px-3 py-2 focus:outline-none focus:border-blue-600 cursor-pointer"
+                >
+                    <option value="" disabled selected>-- Select a pre-configured query --</option>
+                    <option value="SELECT COUNT(*) AS total_accounts, SUM(balance) AS total_liabilities, ROUND(AVG(balance), 2) AS avg_balance, MIN(balance) AS min_balance, MAX(balance) AS max_balance 
+                    FROM account;">
+                        1. System-wide Total Accounts & Balance Summary
+                    </option>
+                    <option value="SELECT b.branch_name, COUNT(a.account_id) AS total_accounts, SUM(a.balance) AS branch_deposits 
+FROM branch b 
+JOIN account a ON b.branch_id = a.branch_id 
+GROUP BY b.branch_name 
+ORDER BY branch_deposits DESC;">
+                        2. Branch-wise Total Accounts & Deposit Volume
+                    </option>
+                    <option value="SELECT account_type, COUNT(*) AS num_accounts, ROUND(AVG(balance), 2) AS avg_balance 
+FROM account 
+GROUP BY account_type 
+HAVING AVG(balance) > 50000;">
+                        3. High-Balance Account Categories (Avg Balance > ₹50,000)
+                    </option>
+                    <option value="SELECT c.firstname, c.lastname, a.account_number, a.account_type, a.balance 
+FROM customer c 
+JOIN account a ON c.customer_id = a.customer_id 
+ORDER BY a.balance DESC;">
+                        4. Customer Accounts Ranked by Highest Balance
+                    </option>
+                    <option value="SELECT DISTINCT transaction_type, transaction_method 
+FROM transaction 
+ORDER BY transaction_type;">
+                        5. Distinct Transaction Types & Channels Used
+                    </option>
+                    <option value="SELECT account_number, account_type, balance 
+FROM account 
+WHERE balance > (SELECT AVG(balance) FROM account) 
+ORDER BY balance DESC;">
+                        6. Accounts with Balance Above Bank Average
+                    </option>
+                    <option value="SELECT cust.firstname || ' ' || COALESCE(cust.lastname, '') AS customer_name, a.account_number, a.account_type, crd.card_number, crd.card_type, crd.status AS card_status 
+FROM customer cust 
+JOIN account a ON cust.customer_id = a.customer_id 
+JOIN card crd ON a.account_id = crd.account_id 
+WHERE crd.card_id IN (SELECT card_id FROM card WHERE status = 'BLOCKED') 
+ORDER BY a.account_number;">
+                        7. Customers with Blocked Cards (Account & Card Details)
+                    </option>
+                    <option value="SELECT c.firstname || ' ' || COALESCE(c.lastname, '') AS customer_name, a.account_number, a.balance, crd.card_number, crd.card_type, crd.status AS card_status 
+FROM customer c 
+INNER JOIN account a ON c.customer_id = a.customer_id 
+INNER JOIN card crd ON a.account_id = crd.account_id 
+WHERE a.status = 'ACTIVE';">
+                        8. Active Accounts with Customer & Linked Card Details
+                    </option>
+                    <option value="SELECT b.branch_id, b.branch_name, b.ifsc_code, COUNT(a.account_id) AS accounts_count, COALESCE(SUM(a.balance), 0.00) AS total_balance 
+FROM branch b 
+LEFT OUTER JOIN account a ON b.branch_id = a.branch_id GROUP 
+BY b.branch_id, b.branch_name, b.ifsc_code 
+ORDER BY b.branch_id;">
+                        9. All Bank Branches with Account Counts and Total Funds
+                    </option>
+                    <option value="SELECT branch_name AS facility_name, 'BRANCH' AS facility_type, address AS location_detail 
+FROM branch 
+UNION SELECT terminal_code AS facility_name, 'ATM' AS facility_type, atm_location AS location_detail 
+FROM atm 
+ORDER BY facility_type, facility_name;">
+
+                
+                        10. Unified Directory of All Bank Branches & ATM Locations
+                    </option>
+                    <option value="SELECT cust.firstname || ' ' || COALESCE(cust.lastname, '') AS account_holder_name, a.account_number, a.account_type, a.balance 
+FROM customer cust 
+JOIN account a ON cust.customer_id = a.customer_id 
+WHERE cust.customer_id IN (
+        SELECT customer_id 
+        FROM customer INTERSECT 
+                SELECT customer_id 
+                FROM account 
+                WHERE status = 'ACTIVE') 
+ORDER BY a.account_number;">
+                        11. Verified Active Accounts (Account Holder, Number & Type)
+                    </option>
+                    <option value="SELECT * FROM v_account_overview
+ORDER BY account_id;">
+                        12. Account Overview View (v_account_overview)
+                    </option>
+                </select>
+
+                <button 
+                    type="button" 
+                    id="btn-load-preset" 
+                    onclick="loadSelectedPreset()" 
+                    class="px-3.5 py-2 rounded-lg bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-800 text-xs font-semibold whitespace-nowrap transition"
+                >
+                    Load into Console
+                </button>
+            </div>
+        </div>
+
+        <!-- Terminal Window -->
+        <div class="cli-window rounded-2xl shadow-xl p-4 md:p-6 flex flex-col h-[560px] border border-slate-800 bg-[#0f172a]">
+            <!-- Terminal Title Bar -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                    <span class="ml-2 font-mono text-slate-300">atls_db=# (psql interactive session)</span>
+                </div>
+                <span class="text-slate-500">Type 'help' or 'clear'</span>
+            </div>
+
+            <!-- Terminal Output Log -->
+            <div id="terminal-output" class="flex-1 overflow-y-auto overflow-x-auto space-y-2 pr-2 text-xs">
+                <div class="text-slate-300">ATLS PostgreSQL Interactive Database Shell (v16.x)</div>
+                <div class="text-slate-400">Connected to database: <span class="text-slate-200 font-mono">atls_db</span> as user: <span class="text-emerald-400 font-mono">atm_dba</span></div>
+                <div class="text-slate-400">Select a preset query from dropdown above or enter SQL statement, then click 'Generate Report'.</div>
+                <div class="text-slate-700">--------------------------------------------------------------------------------</div>
+            </div>
+
+            <!-- Terminal Input Prompt -->
+            <form id="terminal-form" class="mt-3 pt-3 border-t border-slate-800 flex items-start gap-2">
+                <span class="text-emerald-400 font-bold pt-2">$</span>
+                <textarea 
+                    id="terminal-input" 
+                    rows="2"
+                    autocomplete="off" 
+                    spellcheck="false" 
+                    placeholder="Enter SQL command (Press Enter for new line, click 'Generate Report' or Ctrl+Enter to execute)" 
+                    class="flex-1 bg-[#090d16] border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-xs font-mono focus:outline-none focus:border-indigo-500 resize-y min-h-[46px] max-h-[160px] leading-relaxed"
+                    autofocus
+                ></textarea>
+                <button type="submit" id="btn-generate-report" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 shadow transition mt-0.5">
+                    Generate Report
+                </button>
+            </form>
+        </div>
+
+        <!-- External Tabular Report Section (Rendered Outside of Terminal) -->
+        <div id="report-section" class="panel rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4 hidden">
+            <div class="flex flex-wrap items-center justify-end gap-3 border-b border-slate-200 pb-3">
+                <div class="flex items-center gap-3 text-xs">
+                    <span id="report-meta-count" class="text-slate-600 font-mono">0 rows</span>
+                    <span id="report-meta-time" class="text-emerald-600 font-mono">0ms</span>
+                    <button type="button" onclick="document.getElementById('report-section').classList.add('hidden')" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+
+            <!-- Executed query text -->
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <span class="text-[10px] uppercase text-slate-500 font-semibold tracking-wider block mb-1">Report Query:</span>
+                <code id="report-query-text" class="text-indigo-600 font-mono break-all"></code>
+            </div>
+
+            <!-- Tabular Grid -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs border-separate border-spacing-0" id="report-table">
+                    <thead id="report-table-head">
+                        <!-- Dynamic Header -->
+                    </thead>
+                    <tbody id="report-table-body" class="divide-y divide-slate-100">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/terminal.js"></script>
+    <script>
+        function loadSelectedPreset() {
+            const select = document.getElementById('preset-select');
+            const input = document.getElementById('terminal-input');
+            if (select && select.value && input) {
+                input.value = select.value;
+                input.focus();
+                if (window.autoResizeTerminalTextarea) {
+                    window.autoResizeTerminalTextarea(input);
+                }
+            }
+        }
+        function setCommand(cmd) {
+            const input = document.getElementById('terminal-input');
+            if (input) {
+                input.value = cmd;
+                input.focus();
+                if (window.autoResizeTerminalTextarea) {
+                    window.autoResizeTerminalTextarea(input);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
